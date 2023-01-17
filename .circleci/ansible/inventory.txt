@@ -1,1 +1,2 @@
 [web]
+    ec2-44-202-60-180.compute-1.amazonaws.com

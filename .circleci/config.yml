@@ -296,6 +296,30 @@ jobs:
           workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}" 
       - revert-migrations:
           workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"  
+  configure-test:
+    docker:
+      - image: python:3.9.16
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints: ["90:9c:c7:26:ae:c4:b8:0a:65:25:d6:45:4c:26:92:85"]
+      - run:
+          name: Install dependencies
+          command: |
+            apt-get update -y
+            apt install ansible -y
+            apt install awscli -y
+      - run:
+          name: configur test
+          command: |
+            cd .circleci/ansible
+            echo "Contents  of the inventory.txt file is -------"
+            cat inventory.txt
+            ansible-playbook -i inventory.txt configure-server.yml
+      - destroy-environment:
+          workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}" 
+      - revert-migrations:
+          workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"  
 
   smoke-test:
     docker:
@@ -349,36 +373,34 @@ jobs:
       - image: amazon/aws-cli
     steps:
       - checkout
-      - run:
-          name: Install dependencies
-          command: |
-            yum remove nodejs  
-            curl --silent --location https://rpm.nodesource.com/setup_16.x | bash -
-            yum -y install nodejs 
-            yum install tar gzip -y
-      - run:
-          name: Fetch and save the old deployment workflow id
-          command: |
-            aws cloudformation \
-              list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
-              --no-paginate --output text > ~/lastDeployment.txt
-            cat ~/lastDeployment.txt
-      - persist_to_workspace:
-          root: ~/
-          paths: 
-            - lastDeployment.txt   
+      # - run:
+      #     name: Install dependencies
+      #     command: |
+      #       yum remove nodejs  
+      #       curl --silent --location https://rpm.nodesource.com/setup_16.x | bash -
+      #       yum -y install nodejs 
+      #       yum install tar gzip -y
+      # - run:
+      #     name: Fetch and save the old deployment workflow id
+      #     command: |
+      #       aws cloudformation \
+      #         list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
+      #         --no-paginate --output text > ~/lastDeployment.txt
+      #       cat ~/lastDeployment.txt
+      # - persist_to_workspace:
+      #     root: ~/
+      #     paths: 
+      #       - lastDeployment.txt   
       - run:
           name: Update cloudfront distribution
           command: |
-            aws cloudformation deploy \
-              --template-file .circleci/files/cloudfront.yml \
-              --stack-name udapeople-cloudfront \
-              --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}" \
-              --tags project=udapeople
-      - destroy-environment:
-          workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
-      - revert-migrations:
-          workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"        
+            echo $(curl --insecure	https://ec2-52-90-5-7.compute-1.amazonaws.com:9100/metrics)
+            echo "________________________________"
+            echo $(curl	https://ec2-52-90-5-7.compute-1.amazonaws.com:9100/metrics)
+      # - destroy-environment:
+      #     workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
+      # - revert-migrations:
+      #     workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"               
   cleanup:
     docker:
       - image: amazon/aws-cli
@@ -417,32 +439,33 @@ jobs:
 workflows:
   uda-people-workflow:
     jobs:
-      - build-frontend
-      - build-backend
-      - test-frontend:
-          requires: [build-frontend]
-      - test-backend:
-          requires: [build-backend]
-      - scan-frontend:
-          requires: [build-frontend]
-      - scan-backend:
-          requires: [build-backend]
-      - deploy-infrastructure:
-          requires: [test-frontend, test-backend, scan-frontend, scan-backend]
-          filters:
-            branches:
-              only: [master]
-      - configure-infrastructure:
-          requires: [deploy-infrastructure]
-      - run-migrations:
-          requires: [configure-infrastructure]
-      - deploy-frontend:
-          requires: [run-migrations]
-      - deploy-backend:
-          requires: [run-migrations]
-      - smoke-test:
-          requires: [deploy-backend, deploy-frontend]
-      - cloudfront-update:
-          requires: [smoke-test]
-      - cleanup:
-          requires: [cloudfront-update]
+      - cloudfront-update
+      # - build-frontend
+      # - build-backend
+      # - test-frontend:
+      #     requires: [build-frontend]
+      # - test-backend:
+      #     requires: [build-backend]
+      # - scan-frontend:
+      #     requires: [build-frontend]
+      # - scan-backend:
+      #     requires: [build-backend]
+      # - deploy-infrastructure:
+      #     requires: [test-frontend, test-backend, scan-frontend, scan-backend]
+      #     filters:
+      #       branches:
+      #         only: [master]
+      # - configure-infrastructure:
+      #     requires: [deploy-infrastructure]
+      # - run-migrations:
+      #     requires: [configure-infrastructure]
+      # - deploy-frontend:
+      #     requires: [run-migrations]
+      # - deploy-backend:
+      #     requires: [run-migrations]
+      # - smoke-test:
+      #     requires: [deploy-backend, deploy-frontend]
+      # - cloudfront-update:
+      #     requires: [smoke-test]
+      # - cleanup:
+      #     requires: [cloudfront-update]
