@@ -189,6 +189,26 @@ jobs:
       - destroy-environment:
           workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
 
+  install-ansible:
+    docker:
+      - image: python:3.9.16
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints: ["90:9c:c7:26:ae:c4:b8:0a:65:25:d6:45:4c:26:92:85"]
+      - run:
+          name: Install dependencies
+          command: |
+            apt-get update -y
+            apt install ansible -y
+            apt install awscli -y
+            which ansible
+      - run:
+          name: Install prometheus
+          command: |
+            cd .circleci/ansible
+            ansible-playbook -i ~/project/.circleci/ansible/prom-inventory.txt prometheus-server.yml
+
   run-migrations:
     docker:
       - image: python:3.9.16
@@ -439,7 +459,7 @@ jobs:
 workflows:
   uda-people-workflow:
     jobs:
-      - cloudfront-update
+      - install-ansible
       # - build-frontend
       # - build-backend
       # - test-frontend:
